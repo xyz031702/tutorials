@@ -1,294 +1,622 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "2.0",
+  "generator": "score_tool_fit.py",
   "hard_criteria": {
-    "description": "Mandatory gates applied BEFORE any tool_fit scoring. A company must pass every gate to be scored; failures are excluded regardless of product fit.",
     "gates": [
       {
         "id": "hq_taiwan",
-        "label": "Headquarters in Taiwan",
-        "rule": "Global corporate HQ legally domiciled in Taiwan (not merely a Taiwan-born founder or a regional office)."
+        "rule": "Global corporate HQ legally domiciled in Taiwan."
       },
       {
         "id": "well_established",
-        "label": "Well-established",
-        "rule": "Publicly listed (TWSE/TPEx) or clear market leader, founded >= ~15 years ago, with sustained multi-year revenue at scale. Excludes startups and early-stage vendors."
+        "rule": "Publicly listed / market leader founded on or before 2011 (>= ~15y)."
       }
     ],
-    "excluded_examples": [
-      {"company": "Bosch Mobility", "failed_gate": "hq_taiwan", "note": "HQ Gerlingen, Germany."},
-      {"company": "Supermicro", "failed_gate": "hq_taiwan", "note": "HQ San Jose, USA (Taiwanese founder, but not Taiwan-domiciled)."},
-      {"company": "Generic robotics/SLAM startup", "failed_gate": "well_established", "note": "Early-stage; also HQ not established as Taiwan."}
+    "candidates_evaluated": 36,
+    "passed": 33,
+    "excluded": [
+      {
+        "company": "Wiwynn",
+        "hq": "New Taipei, Taiwan",
+        "failed_gates": [
+          "well_established"
+        ]
+      },
+      {
+        "company": "Supermicro",
+        "hq": "San Jose, USA",
+        "failed_gates": [
+          "hq_taiwan"
+        ]
+      },
+      {
+        "company": "Garmin",
+        "hq": "Olathe, USA",
+        "failed_gates": [
+          "hq_taiwan"
+        ]
+      }
     ]
   },
-  "methodology": {
-    "scoring": "After hard-criteria gating, each surviving company is scored 0-100 for fit against EACH Black Duck product independently. The recommended LEAD product is the weighted-max across products; default lead is Black Duck SCA/SBOM unless a stronger Defensics (protocol/safety) or Coverity (large embedded codebase) signal dominates.",
-    "products": [
-      "Black Duck (SCA + SBOM)",
-      "Coverity (SAST) + LLM/AI-assisted SAST",
-      "DAST",
-      "Defensics (protocol/file/interface fuzzing)"
+  "scoring_model": {
+    "signals": [
+      "oss",
+      "sbom_pull",
+      "embedded",
+      "ai",
+      "web",
+      "protocol",
+      "safety"
     ],
-    "note": "No company list was supplied with the task. The set below is a representative sample of well-established, Taiwan-HQ companies drawn to satisfy the hard criteria and exercise the per-product scoring/lead logic. Replace with a real list to regenerate."
+    "formulas": {
+      "black_duck_sca_sbom": "100*(0.70*oss + 0.30*sbom_pull)",
+      "coverity_sast": "100*(0.72*embedded + 0.28*ai)",
+      "dast": "100*web",
+      "defensics_fuzzing": "100*(0.80*protocol + 0.20*safety)"
+    },
+    "lead_rule": "Default Black Duck. A challenger leads if it beats the Black Duck baseline, or -- for the differentiated wedges ('defensics_fuzzing', 'coverity_sast') -- if it scores >= 78 and within 8 of Black Duck."
   },
   "companies": [
-    {
-      "company": "MediaTek",
-      "hq": "Hsinchu, Taiwan",
-      "founded": 1997,
-      "listing": "TWSE: 2454",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
-      "archetype": "Connectivity SoC / firmware + BSP/SDK shipper",
-      "phase": "Phase 2",
-      "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 88,
-          "reason": "BSP/SDK and reference firmware are built on large OSS stacks (Linux kernel, BlueZ, wpa_supplicant); ODM customers and hyperscalers demand component inventory + license clearance.",
-          "artifact": "BSP/SDK + reference firmware images shipped to ODMs",
-          "mandate_clause": "CRA Annex I SBOM obligation; NTIA/EO 14028 SBOM for downstream device makers"
-        },
-        "coverity_sast": {
-          "score": 85,
-          "reason": "Very large in-house C/C++ embedded codebase (modem, baseband, driver layers) shipped externally; high source-level defect/vuln exposure.",
-          "artifact": "Proprietary C/C++ firmware and driver source",
-          "mandate_clause": "SSDF PW.7/PW.8 static analysis; ISO/SAE 21434 secure development expectations"
-        },
-        "dast": {
-          "score": 30,
-          "reason": "Minimal directly-owned web/API attack surface; chip vendor, not an app/cloud operator.",
-          "artifact": "Limited developer portal only",
-          "mandate_clause": "Low applicability (no consumer web/OTA backend)"
-        },
-        "defensics_fuzzing": {
-          "score": 95,
-          "reason": "Ships the actual 5G/Wi-Fi/Bluetooth/Thread protocol stacks; robustness/fuzz testing of these interfaces is the differentiated, high-value wedge for connectivity silicon.",
-          "artifact": "Implemented 5G/Wi-Fi/BT/Thread comms stacks",
-          "mandate_clause": "ISO/SAE 21434 + IEC 62443 fuzz/robustness expectations; carrier/CRA interface-robustness testing"
-        }
-      },
-      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
-      "wedge": "Fuzz the 5G/Wi-Fi/BT stacks you ship before a carrier or CRA assessor does."
-    },
-    {
-      "company": "ASUS (ASUSTeK Computer)",
-      "hq": "Taipei, Taiwan",
-      "founded": 1989,
-      "listing": "TWSE: 2357",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
-      "archetype": "Consumer device brand w/ companion apps + cloud/OTA",
-      "phase": "Phase 5",
-      "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 85,
-          "reason": "Routers, laptops and IoT devices built on heavy OSS firmware; SBOM is an explicit deliverable for retail/CRA and enterprise procurement.",
-          "artifact": "Device firmware images across product lines",
-          "mandate_clause": "CRA Annex I SBOM; EO 14028/NTIA SBOM for device sales"
-        },
-        "coverity_sast": {
-          "score": 65,
-          "reason": "Meaningful in-house firmware/app code, but a larger share is integration of third-party SoC stacks than ground-up C/C++.",
-          "artifact": "Router/IoT firmware + companion app source",
-          "mandate_clause": "SSDF PW.7 static analysis"
-        },
-        "dast": {
-          "score": 80,
-          "reason": "Rich owned web/API/OTA surface: Router app, Armoury Crate, ASUS cloud/OTA backends and management portals - classic running-app attack surface.",
-          "artifact": "Companion apps, cloud/OTA backend, web management UIs",
-          "mandate_clause": "CRA secure-by-design for connected services; OWASP-style app/API testing expectations"
-        },
-        "defensics_fuzzing": {
-          "score": 70,
-          "reason": "Wi-Fi/BT/router protocol surface present, but ASUS integrates rather than authors most of the lowest-level stacks.",
-          "artifact": "Router/AP protocol handling",
-          "mandate_clause": "IEC 62443 / CRA interface robustness"
-        }
-      },
-      "recommended_lead": "Black Duck (SCA + SBOM)",
-      "wedge": "SBOM-first wedge across the device fleet, with DAST attach for the app/cloud/OTA ecosystem."
-    },
-    {
-      "company": "Advantech",
-      "hq": "Taipei, Taiwan",
-      "founded": 1983,
-      "listing": "TWSE: 2395",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
-      "archetype": "Industrial edge gateway & IPC vendor",
-      "phase": "Phase 5",
-      "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 88,
-          "reason": "Edge gateways and industrial PCs ship on OSS Linux stacks; IEC 62443 and CRA make SBOM a market-access requirement for OT buyers.",
-          "artifact": "Edge gateway / IPC firmware images",
-          "mandate_clause": "IEC 62443-4-1 SBOM; CRA Annex I"
-        },
-        "coverity_sast": {
-          "score": 70,
-          "reason": "Moderate in-house firmware/app code on top of significant third-party integration.",
-          "artifact": "Gateway/IPC firmware + management app source",
-          "mandate_clause": "IEC 62443-4-1 secure development; SSDF static analysis"
-        },
-        "dast": {
-          "score": 60,
-          "reason": "Device/management web portals and cloud (WISE-PaaS) present a moderate owned web surface.",
-          "artifact": "Device portals / WISE-PaaS cloud",
-          "mandate_clause": "OWASP API testing; CRA connected-service security"
-        },
-        "defensics_fuzzing": {
-          "score": 82,
-          "reason": "Implements industrial protocols (Modbus, OPC-UA, MQTT, BACnet); IEC 62443 explicitly expects protocol robustness/fuzz testing.",
-          "artifact": "Modbus / OPC-UA / MQTT / BACnet stacks",
-          "mandate_clause": "IEC 62443-4-2 robustness/fuzz testing"
-        }
-      },
-      "recommended_lead": "Black Duck (SCA + SBOM)",
-      "wedge": "SBOM for IEC 62443/CRA market access, with Defensics attach on the OT protocol stacks."
-    },
-    {
-      "company": "Realtek Semiconductor",
-      "hq": "Hsinchu, Taiwan",
-      "founded": 1987,
-      "listing": "TWSE: 2379",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
-      "archetype": "Networking / connectivity / audio SoC + driver vendor",
-      "phase": "Phase 2",
-      "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 84,
-          "reason": "Reference SDKs and driver packages bundle OSS; OEMs integrating Realtek silicon need component/license clearance for their own SBOMs.",
-          "artifact": "Driver packages + reference SDK shipped to OEMs",
-          "mandate_clause": "CRA SBOM passthrough; NTIA SBOM for downstream device makers"
-        },
-        "coverity_sast": {
-          "score": 83,
-          "reason": "Large in-house C firmware/driver codebase (NIC, Wi-Fi, audio) shipped into millions of devices; high source-level vuln exposure.",
-          "artifact": "Proprietary C firmware/driver source",
-          "mandate_clause": "SSDF PW.7/PW.8 static analysis"
-        },
-        "dast": {
-          "score": 25,
-          "reason": "Pure silicon/driver vendor with negligible owned web surface.",
-          "artifact": "Developer downloads only",
-          "mandate_clause": "Low applicability"
-        },
-        "defensics_fuzzing": {
-          "score": 90,
-          "reason": "Implements Ethernet/Wi-Fi/Bluetooth/USB protocol stacks at the silicon+driver layer; interface fuzzing is the differentiated wedge for connectivity ICs.",
-          "artifact": "Ethernet / Wi-Fi / BT / USB stacks",
-          "mandate_clause": "IEC 62443 + CRA interface-robustness testing"
-        }
-      },
-      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
-      "wedge": "Fuzz the Ethernet/Wi-Fi/BT/USB stacks baked into your silicon, with Coverity attach on the driver code."
-    },
     {
       "company": "Quanta Computer",
       "hq": "Taoyuan, Taiwan",
       "founded": 1988,
-      "listing": "TWSE: 2382",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
-      "archetype": "Server / notebook ODM (hyperscaler supply)",
+      "listing": "TWSE:2382",
+      "archetype": "Server / notebook ODM (hyperscaler)",
       "phase": "Phase 5",
       "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 92,
-          "reason": "Builds servers/notebooks for hyperscalers and OEMs on OSS-dense firmware (Linux, OpenBMC); SBOM is a hard contract gate from cloud/federal buyers.",
-          "artifact": "Server/notebook platform + BMC firmware",
-          "mandate_clause": "EO 14028 federal SBOM; hyperscaler procurement SBOM; CRA"
-        },
-        "coverity_sast": {
-          "score": 75,
-          "reason": "Substantial in-house BMC/BIOS and platform C firmware shipped at scale.",
-          "artifact": "BMC/BIOS + platform C source",
-          "mandate_clause": "SSDF PW.7/PW.8 static analysis"
-        },
-        "dast": {
-          "score": 68,
-          "reason": "Server management UIs / Redfish-IPMI web interfaces are an owned, attackable running surface.",
-          "artifact": "BMC web management UI / Redfish API",
-          "mandate_clause": "Management-plane hardening; OWASP API testing"
-        },
-        "defensics_fuzzing": {
-          "score": 66,
-          "reason": "IPMI/Redfish and network management protocols present, but narrower interface set than a comms-stack vendor.",
-          "artifact": "IPMI / Redfish protocol handling",
-          "mandate_clause": "IEC 62443 robustness"
-        }
+        "black_duck_sca_sbom": 92,
+        "coverity_sast": 54,
+        "dast": 68,
+        "defensics_fuzzing": 47
       },
       "recommended_lead": "Black Duck (SCA + SBOM)",
-      "wedge": "SBOM as the contract-gate opener for hyperscaler/federal server deals, Coverity attach on BMC/BIOS."
+      "wedge": "SBOM-first: inventory the OSS in server/notebook platform + BMC firmware to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 federal SBOM; hyperscaler; CRA"
+    },
+    {
+      "company": "Wistron",
+      "hq": "Taipei, Taiwan",
+      "founded": 2001,
+      "listing": "TWSE:3231",
+      "archetype": "Server / device ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 89,
+        "coverity_sast": 50,
+        "dast": 58,
+        "defensics_fuzzing": 41
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in server/device platform + BMC firmware to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; hyperscaler; CRA"
+    },
+    {
+      "company": "Inventec",
+      "hq": "Taipei, Taiwan",
+      "founded": 1975,
+      "listing": "TWSE:2356",
+      "archetype": "Server / device ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 89,
+        "coverity_sast": 49,
+        "dast": 56,
+        "defensics_fuzzing": 40
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in server/device platform + BMC firmware to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; hyperscaler; CRA"
     },
     {
       "company": "Synology",
       "hq": "New Taipei, Taiwan",
       "founded": 2000,
-      "listing": "TWSE: 6783",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
+      "listing": "TWSE:6783",
       "archetype": "NAS / storage appliance + DSM web OS",
       "phase": "Phase 5",
       "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 86,
-          "reason": "DSM is a Linux-based OS bundling extensive OSS and a package ecosystem; SBOM is increasingly demanded by enterprise/SMB and CRA.",
-          "artifact": "DSM firmware/OS + package center",
-          "mandate_clause": "CRA Annex I SBOM; enterprise procurement SBOM"
-        },
-        "coverity_sast": {
-          "score": 68,
-          "reason": "Meaningful in-house C/C++ system + app code, layered on a large OSS base.",
-          "artifact": "DSM system services + first-party app source",
-          "mandate_clause": "SSDF PW.7 static analysis"
-        },
-        "dast": {
-          "score": 88,
-          "reason": "DSM is a full web application/OS with packages, APIs, QuickConnect remote access and cloud - a large, internet-exposed owned attack surface and a frequent CVE target.",
-          "artifact": "DSM web UI / APIs / QuickConnect / cloud services",
-          "mandate_clause": "CRA secure-by-design for connected services; OWASP web/API testing"
-        },
-        "defensics_fuzzing": {
-          "score": 60,
-          "reason": "Storage/file and network protocols (SMB/NFS/AFP) are fuzzable but largely integrated rather than authored.",
-          "artifact": "SMB / NFS / file-format handling",
-          "mandate_clause": "IEC 62443 / protocol robustness"
-        }
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 59,
+        "dast": 88,
+        "defensics_fuzzing": 52
+      },
+      "recommended_lead": "DAST",
+      "wedge": "Test the running web/app/API surface: DSM web UI / APIs / QuickConnect / cloud.",
+      "lead_mandate_clause": "CRA secure-by-design; OWASP"
+    },
+    {
+      "company": "Hon Hai (Foxconn)",
+      "hq": "New Taipei, Taiwan",
+      "founded": 1974,
+      "listing": "TWSE:2317",
+      "archetype": "EMS / device + EV builder",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 87,
+        "coverity_sast": 56,
+        "dast": 55,
+        "defensics_fuzzing": 55
       },
       "recommended_lead": "Black Duck (SCA + SBOM)",
-      "wedge": "SBOM across the DSM OSS base, with a strong DAST attach for the internet-facing DSM web/app surface."
+      "wedge": "SBOM-first: inventory the OSS in device/EV firmware platform + integration to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; CRA; R155 (EV)"
+    },
+    {
+      "company": "Compal Electronics",
+      "hq": "Taipei, Taiwan",
+      "founded": 1984,
+      "listing": "TWSE:2324",
+      "archetype": "Notebook / device ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 86,
+        "coverity_sast": 47,
+        "dast": 50,
+        "defensics_fuzzing": 39
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in notebook/device firmware platform to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; CRA"
+    },
+    {
+      "company": "Pegatron",
+      "hq": "Taipei, Taiwan",
+      "founded": 2008,
+      "listing": "TWSE:4938",
+      "archetype": "EMS / device ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 86,
+        "coverity_sast": 46,
+        "dast": 50,
+        "defensics_fuzzing": 40
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in device firmware platform + integration to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; CRA"
+    },
+    {
+      "company": "Advantech",
+      "hq": "Taipei, Taiwan",
+      "founded": 1983,
+      "listing": "TWSE:2395",
+      "archetype": "Industrial edge gateway / IPC",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 86,
+        "coverity_sast": 60,
+        "dast": 60,
+        "defensics_fuzzing": 74
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in edge gateway/IPC firmware + Modbus/OPC-UA stacks to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "IEC 62443-4-1 SBOM; CRA"
+    },
+    {
+      "company": "QNAP Systems",
+      "hq": "New Taipei, Taiwan",
+      "founded": 2004,
+      "listing": "private",
+      "archetype": "NAS / storage appliance + QTS web OS",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 56,
+        "dast": 86,
+        "defensics_fuzzing": 50
+      },
+      "recommended_lead": "DAST",
+      "wedge": "Test the running web/app/API surface: QTS web UI / APIs / cloud + app center.",
+      "lead_mandate_clause": "CRA secure-by-design; OWASP"
+    },
+    {
+      "company": "MediaTek",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1997,
+      "listing": "TWSE:2454",
+      "archetype": "Connectivity SoC / firmware + SDK",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 88,
+        "coverity_sast": 84,
+        "dast": 20,
+        "defensics_fuzzing": 85
+      },
+      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
+      "wedge": "Fuzz the protocol/interface stacks you author: 5G/Wi-Fi/BT/Thread comms stacks.",
+      "lead_mandate_clause": "ISO 21434 + IEC 62443 fuzz; CRA"
+    },
+    {
+      "company": "Gigabyte Technology",
+      "hq": "New Taipei, Taiwan",
+      "founded": 1986,
+      "listing": "TWSE:2376",
+      "archetype": "Motherboard / GPU / server builder",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 84,
+        "coverity_sast": 57,
+        "dast": 62,
+        "defensics_fuzzing": 43
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in board/server firmware + BMC management UI to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; hyperscaler; CRA"
+    },
+    {
+      "company": "Accton Technology",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1988,
+      "listing": "TWSE:2345",
+      "archetype": "Networking / switch ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 84,
+        "coverity_sast": 57,
+        "dast": 62,
+        "defensics_fuzzing": 66
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in switch/router firmware + management UI to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; IEC 62443; CRA"
+    },
+    {
+      "company": "Sercomm",
+      "hq": "Taipei, Taiwan",
+      "founded": 1992,
+      "listing": "TWSE:5388",
+      "archetype": "Broadband CPE / IoT gateway ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 84,
+        "coverity_sast": 55,
+        "dast": 68,
+        "defensics_fuzzing": 68
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in CPE/gateway firmware + remote mgmt (TR-069) to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; carrier SBOM; IEC 62443"
+    },
+    {
+      "company": "ADLINK Technology",
+      "hq": "Taipei, Taiwan",
+      "founded": 1995,
+      "listing": "TWSE:6166",
+      "archetype": "Edge computing / industrial IPC",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 84,
+        "coverity_sast": 63,
+        "dast": 55,
+        "defensics_fuzzing": 73
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in edge/IPC firmware + industrial protocol stacks to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "IEC 62443 SBOM/robustness; CRA"
+    },
+    {
+      "company": "VIVOTEK",
+      "hq": "New Taipei, Taiwan",
+      "founded": 2000,
+      "listing": "TWSE:3454",
+      "archetype": "IP surveillance camera",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 84,
+        "coverity_sast": 63,
+        "dast": 80,
+        "defensics_fuzzing": 67
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in camera firmware + ONVIF/RTSP stacks + web/VMS to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; NDAA; IEC 62443"
+    },
+    {
+      "company": "ASUS (ASUSTeK)",
+      "hq": "Taipei, Taiwan",
+      "founded": 1989,
+      "listing": "TWSE:2357",
+      "archetype": "Consumer device + companion apps/cloud",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 83,
+        "coverity_sast": 54,
+        "dast": 82,
+        "defensics_fuzzing": 48
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in device firmware + companion app/cloud/OTA to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; EO 14028/NTIA SBOM"
+    },
+    {
+      "company": "Arcadyan Technology",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 2003,
+      "listing": "TWSE:3596",
+      "archetype": "Broadband CPE / router ODM",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 52,
+        "dast": 66,
+        "defensics_fuzzing": 68
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in router/CPE firmware + TR-069 mgmt to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; carrier SBOM"
+    },
+    {
+      "company": "D-Link",
+      "hq": "Taipei, Taiwan",
+      "founded": 1986,
+      "listing": "TWSE:2332",
+      "archetype": "Networking device brand",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 49,
+        "dast": 74,
+        "defensics_fuzzing": 61
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in router/AP/camera firmware + cloud apps to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; EO 14028 SBOM"
+    },
+    {
+      "company": "Zyxel Communications",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1989,
+      "listing": "private",
+      "archetype": "Networking / security appliance",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 52,
+        "dast": 76,
+        "defensics_fuzzing": 63
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in firewall/router firmware + web mgmt to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; IEC 62443; SBOM"
     },
     {
       "company": "Moxa",
       "hq": "New Taipei, Taiwan",
       "founded": 1987,
-      "listing": "private (Taiwan-domiciled, long-established)",
-      "hard_criteria": {"hq_taiwan": "pass", "well_established": "pass"},
-      "archetype": "Industrial networking / OT connectivity vendor",
+      "listing": "private",
+      "archetype": "Industrial networking / OT connectivity",
       "phase": "Phase 5",
       "fit_scores": {
-        "black_duck_sca_sbom": {
-          "score": 84,
-          "reason": "Industrial switches/gateways ship OSS-based firmware; IEC 62443 and CRA make SBOM a market-access requirement for OT/critical-infrastructure buyers.",
-          "artifact": "Industrial switch/gateway firmware",
-          "mandate_clause": "IEC 62443-4-1 SBOM; CRA Annex I"
-        },
-        "coverity_sast": {
-          "score": 70,
-          "reason": "In-house C firmware for networking/serial devices shipped into OT environments.",
-          "artifact": "Device firmware C source",
-          "mandate_clause": "IEC 62443-4-1 secure development; SSDF static analysis"
-        },
-        "dast": {
-          "score": 55,
-          "reason": "Device web management consoles present a moderate owned web surface.",
-          "artifact": "Device management web UIs",
-          "mandate_clause": "OWASP API testing"
-        },
-        "defensics_fuzzing": {
-          "score": 88,
-          "reason": "Core product is OT/industrial protocol implementation (Modbus, EtherNet/IP, PROFINET, serial-to-Ethernet); protocol robustness/fuzz is the differentiated wedge and is explicitly expected by IEC 62443.",
-          "artifact": "Modbus / EtherNet/IP / PROFINET / serial protocol stacks",
-          "mandate_clause": "IEC 62443-4-2 robustness/fuzz testing"
-        }
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 56,
+        "dast": 55,
+        "defensics_fuzzing": 81
       },
       "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
-      "wedge": "Fuzz the OT protocol stacks that ARE your product, evidencing IEC 62443 robustness; Black Duck attach for SBOM market access."
+      "wedge": "Fuzz the protocol/interface stacks you author: Modbus/EtherNet-IP/PROFINET protocol stacks.",
+      "lead_mandate_clause": "IEC 62443-4-2 fuzz; CRA"
+    },
+    {
+      "company": "ASRock",
+      "hq": "Taipei, Taiwan",
+      "founded": 2002,
+      "listing": "TWSE:3515",
+      "archetype": "Motherboard / IPC builder",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 81,
+        "coverity_sast": 52,
+        "dast": 58,
+        "defensics_fuzzing": 39
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in board/IPC firmware + BMC UI to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "EO 14028 SBOM; CRA"
+    },
+    {
+      "company": "Delta Electronics",
+      "hq": "Taipei, Taiwan",
+      "founded": 1971,
+      "listing": "TWSE:2308",
+      "archetype": "Industrial automation / power / EV",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 82,
+        "coverity_sast": 63,
+        "dast": 52,
+        "defensics_fuzzing": 80
+      },
+      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
+      "wedge": "Fuzz the protocol/interface stacks you author: PLC/drive/EV-charger firmware + OT protocols.",
+      "lead_mandate_clause": "IEC 62443 robustness; R155 (EV); CRA"
+    },
+    {
+      "company": "HTC",
+      "hq": "Taoyuan, Taiwan",
+      "founded": 1997,
+      "listing": "TWSE:2498",
+      "archetype": "Smartphone / XR device brand",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 80,
+        "coverity_sast": 60,
+        "dast": 78,
+        "defensics_fuzzing": 48
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in device firmware + companion apps/cloud + XR runtime to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; EO 14028 SBOM"
+    },
+    {
+      "company": "Acer",
+      "hq": "New Taipei, Taiwan",
+      "founded": 1976,
+      "listing": "TWSE:2353",
+      "archetype": "PC / device brand + services",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 79,
+        "coverity_sast": 47,
+        "dast": 72,
+        "defensics_fuzzing": 31
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in device firmware + service portals/cloud to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; EO 14028 SBOM"
+    },
+    {
+      "company": "Realtek Semiconductor",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1987,
+      "listing": "TWSE:2379",
+      "archetype": "Networking/connectivity/audio SoC + drivers",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 84,
+        "coverity_sast": 73,
+        "dast": 15,
+        "defensics_fuzzing": 78
+      },
+      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
+      "wedge": "Fuzz the protocol/interface stacks you author: Ethernet/Wi-Fi/BT/USB stacks.",
+      "lead_mandate_clause": "IEC 62443 + CRA interface robustness"
+    },
+    {
+      "company": "Andes Technology",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 2005,
+      "listing": "TWSE:6533",
+      "archetype": "RISC-V CPU IP + toolchain",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 78,
+        "coverity_sast": 67,
+        "dast": 15,
+        "defensics_fuzzing": 30
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in CPU IP, toolchain and reference SDK to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "SSDF; supply-chain transparency"
+    },
+    {
+      "company": "Micro-Star Intl (MSI)",
+      "hq": "New Taipei, Taiwan",
+      "founded": 1986,
+      "listing": "TWSE:2377",
+      "archetype": "Motherboard / laptop / device brand",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": 78,
+        "coverity_sast": 49,
+        "dast": 60,
+        "defensics_fuzzing": 35
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in board/laptop firmware + companion apps to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA; EO 14028 SBOM"
+    },
+    {
+      "company": "Innodisk",
+      "hq": "New Taipei, Taiwan",
+      "founded": 2005,
+      "listing": "TWSE:5289",
+      "archetype": "Industrial storage / embedded peripherals",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 78,
+        "coverity_sast": 67,
+        "dast": 30,
+        "defensics_fuzzing": 50
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in industrial SSD/module firmware to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "IEC 62443; CRA SBOM passthrough"
+    },
+    {
+      "company": "Novatek Microelectronics",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1997,
+      "listing": "TWSE:3034",
+      "archetype": "Display driver / SoC",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 76,
+        "coverity_sast": 67,
+        "dast": 10,
+        "defensics_fuzzing": 39
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in Display/SoC firmware + reference SDK to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "CRA SBOM passthrough; SSDF"
+    },
+    {
+      "company": "Nuvoton Technology",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 2008,
+      "listing": "TWSE:4919",
+      "archetype": "MCU / BMC security chip",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 74,
+        "coverity_sast": 69,
+        "dast": 10,
+        "defensics_fuzzing": 65
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in MCU/BMC firmware + protocol handling to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "SSDF; IEC 62443"
+    },
+    {
+      "company": "Phison Electronics",
+      "hq": "Miaoli, Taiwan",
+      "founded": 2000,
+      "listing": "TWSE:8299",
+      "archetype": "NAND flash controller",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 69,
+        "coverity_sast": 73,
+        "dast": 10,
+        "defensics_fuzzing": 52
+      },
+      "recommended_lead": "Coverity (SAST) + LLM/AI-assisted SAST",
+      "wedge": "Static-analysis wedge on the in-house code in Storage controller firmware + host interface; LLM-SAST where it is AI-generated.",
+      "lead_mandate_clause": "SSDF; CRA SBOM passthrough"
+    },
+    {
+      "company": "Silicon Motion",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1995,
+      "listing": "NASDAQ:SIMO/TW",
+      "archetype": "NAND/SSD controller",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 69,
+        "coverity_sast": 73,
+        "dast": 10,
+        "defensics_fuzzing": 54
+      },
+      "recommended_lead": "Coverity (SAST) + LLM/AI-assisted SAST",
+      "wedge": "Static-analysis wedge on the in-house code in SSD controller firmware + NVMe/host interface; LLM-SAST where it is AI-generated.",
+      "lead_mandate_clause": "SSDF; CRA SBOM passthrough"
+    },
+    {
+      "company": "Global Unichip (GUC)",
+      "hq": "Hsinchu, Taiwan",
+      "founded": 1998,
+      "listing": "TWSE:3443",
+      "archetype": "ASIC design service",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": 71,
+        "coverity_sast": 63,
+        "dast": 10,
+        "defensics_fuzzing": 36
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first: inventory the OSS in Custom ASIC firmware + IP integration to clear CRA / EO 14028 / contract gates.",
+      "lead_mandate_clause": "SSDF; customer SBOM passthrough"
     }
   ]
 }
