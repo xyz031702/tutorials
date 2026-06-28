@@ -1,0 +1,213 @@
+{
+  "schema_version": "1.0",
+  "methodology": {
+    "scoring": "Each company is scored 0-100 for fit against EACH Black Duck portfolio product independently. The recommended LEAD product is the weighted-max across products; default lead is Black Duck SCA/SBOM unless a stronger Defensics (protocol/safety) or Coverity (large embedded codebase) signal dominates.",
+    "products": [
+      "Black Duck (SCA + SBOM)",
+      "Coverity (SAST) + LLM/AI-assisted SAST",
+      "DAST",
+      "Defensics (protocol/file/interface fuzzing)"
+    ],
+    "note": "No company list was supplied with the task (no input file, issue, or PR). The companies below are a representative archetype set drawn directly from the rubric (connectivity-SoC vendor, consumer-device + app brand, automotive Tier-1, server/BMC builder, industrial/edge vendor, robotics/autonomy stack) to demonstrate the per-product scoring and lead-selection logic. Swap in a real list to regenerate."
+  },
+  "companies": [
+    {
+      "company": "MediaTek",
+      "archetype": "Connectivity SoC / firmware + BSP/SDK shipper",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": {
+          "score": 88,
+          "reason": "BSP/SDK and reference firmware are built on large OSS stacks (Linux kernel, BlueZ, wpa_supplicant); customers and hyperscalers demand component inventory + license clearance.",
+          "artifact": "BSP/SDK + reference firmware images shipped to ODMs",
+          "mandate_clause": "CRA Annex I SBOM obligation; NTIA/EO 14028 SBOM for downstream device makers"
+        },
+        "coverity_sast": {
+          "score": 85,
+          "reason": "Very large in-house C/C++ embedded codebase (modem, baseband, driver layers) shipped externally; high source-level defect/vuln exposure.",
+          "artifact": "Proprietary C/C++ firmware and driver source",
+          "mandate_clause": "SSDF PW.7/PW.8 static analysis; ISO/SAE 21434 secure development expectations"
+        },
+        "dast": {
+          "score": 30,
+          "reason": "Minimal directly-owned web/API attack surface; chip vendor, not an app/cloud operator.",
+          "artifact": "Limited developer portal only",
+          "mandate_clause": "Low applicability (no consumer web/OTA backend)"
+        },
+        "defensics_fuzzing": {
+          "score": 95,
+          "reason": "Ships the actual 5G/Wi-Fi/Bluetooth/Thread protocol stacks; robustness/fuzz testing of these interfaces is the differentiated, high-value wedge for connectivity silicon.",
+          "artifact": "Implemented 5G/Wi-Fi/BT/Thread comms stacks",
+          "mandate_clause": "ISO/SAE 21434 + IEC 62443 fuzz/robustness expectations; carrier/CRA interface-robustness testing"
+        }
+      },
+      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
+      "wedge": "Fuzz the 5G/Wi-Fi/BT stacks you ship before a carrier or CRA assessor does."
+    },
+    {
+      "company": "ASUS",
+      "archetype": "Consumer device brand w/ companion apps + cloud/OTA",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": {
+          "score": 85,
+          "reason": "Routers, laptops and IoT devices built on heavy OSS firmware; SBOM is an explicit deliverable for retail/CRA and enterprise procurement.",
+          "artifact": "Device firmware images across product lines",
+          "mandate_clause": "CRA Annex I SBOM; EO 14028/NTIA SBOM for device sales"
+        },
+        "coverity_sast": {
+          "score": 65,
+          "reason": "Meaningful in-house firmware/app code, but a larger share is integration of third-party SoC stacks than ground-up C/C++.",
+          "artifact": "Router/IoT firmware + companion app source",
+          "mandate_clause": "SSDF PW.7 static analysis"
+        },
+        "dast": {
+          "score": 80,
+          "reason": "Rich owned web/API/OTA surface: Router app, Armoury Crate, ASUS cloud/OTA backends and management portals — classic running-app attack surface.",
+          "artifact": "Companion apps, cloud/OTA backend, web management UIs",
+          "mandate_clause": "CRA secure-by-design for connected services; OWASP-style app/API testing expectations"
+        },
+        "defensics_fuzzing": {
+          "score": 70,
+          "reason": "Wi-Fi/BT/router protocol surface present, but ASUS integrates rather than authors most of the lowest-level stacks.",
+          "artifact": "Router/AP protocol handling",
+          "mandate_clause": "IEC 62443 / CRA interface robustness"
+        }
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM-first wedge across the device fleet, with DAST attach for the app/cloud/OTA ecosystem."
+    },
+    {
+      "company": "Bosch Mobility (automotive Tier-1)",
+      "archetype": "ADAS / automotive-bus ECU supplier",
+      "phase": "Phase 2/5",
+      "fit_scores": {
+        "black_duck_sca_sbom": {
+          "score": 85,
+          "reason": "ECUs and ADAS units ship on AUTOSAR/Linux OSS; OEM contracts and CRA require component + license transparency.",
+          "artifact": "ECU/ADAS firmware delivered to OEMs",
+          "mandate_clause": "CRA SBOM; OEM/UNECE supply-chain transparency"
+        },
+        "coverity_sast": {
+          "score": 90,
+          "reason": "Massive safety-critical in-house C/C++ ADAS codebase shipped externally; static analysis is a baseline functional-safety + cybersecurity expectation.",
+          "artifact": "Proprietary ADAS / control C/C++ source",
+          "mandate_clause": "ISO/SAE 21434 secure development; ISO 26262 + SSDF static analysis"
+        },
+        "dast": {
+          "score": 45,
+          "reason": "Some telematics/cloud surface, but core product is embedded, not web/API.",
+          "artifact": "Telematics/connected-vehicle cloud (partial)",
+          "mandate_clause": "Limited web applicability"
+        },
+        "defensics_fuzzing": {
+          "score": 92,
+          "reason": "Implements CAN / Automotive-Ethernet / SOME-IP and safety-critical interfaces; R155/21434 explicitly expect fuzz/robustness testing of these buses.",
+          "artifact": "CAN / Automotive-Ethernet / SOME-IP stacks",
+          "mandate_clause": "UN R155 + ISO/SAE 21434 fuzz/robustness testing"
+        }
+      },
+      "recommended_lead": "Defensics (protocol/file/interface fuzzing)",
+      "wedge": "Bus/interface fuzzing to evidence R155/21434 robustness, with Coverity as the static-analysis attach for the safety codebase."
+    },
+    {
+      "company": "Supermicro (server / BMC builder)",
+      "archetype": "Server & motherboard builder (BMC/BIOS)",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": {
+          "score": 90,
+          "reason": "Server platforms and BMC/firmware are OSS-dense (Linux, OpenBMC); hyperscaler and federal buyers mandate SBOM as a contract gate.",
+          "artifact": "Server platform + BMC/BIOS firmware",
+          "mandate_clause": "EO 14028 federal SBOM; hyperscaler procurement SBOM requirements; CRA"
+        },
+        "coverity_sast": {
+          "score": 78,
+          "reason": "Substantial in-house C BMC/BIOS firmware shipped externally; high-value targets for source-level vuln detection.",
+          "artifact": "BMC/BIOS C source",
+          "mandate_clause": "SSDF PW.7/PW.8 static analysis"
+        },
+        "dast": {
+          "score": 70,
+          "reason": "Server management UIs / Redfish-IPMI web interfaces are an owned, attackable running surface.",
+          "artifact": "BMC web management UI / Redfish API",
+          "mandate_clause": "Management-plane hardening; OWASP API testing"
+        },
+        "defensics_fuzzing": {
+          "score": 65,
+          "reason": "IPMI/Redfish and network management protocols present, but narrower interface set than a comms-stack vendor.",
+          "artifact": "IPMI / Redfish protocol handling",
+          "mandate_clause": "IEC 62443 robustness"
+        }
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM as the contract-gate opener for hyperscaler/federal deals, Coverity attach on BMC/BIOS."
+    },
+    {
+      "company": "Advantech (industrial / edge IoT)",
+      "archetype": "Industrial edge gateway & IPC vendor",
+      "phase": "Phase 5",
+      "fit_scores": {
+        "black_duck_sca_sbom": {
+          "score": 88,
+          "reason": "Edge gateways and industrial PCs ship on OSS Linux stacks; IEC 62443 and CRA make SBOM a market-access requirement for OT buyers.",
+          "artifact": "Edge gateway / IPC firmware images",
+          "mandate_clause": "IEC 62443-4-1 SBOM; CRA Annex I"
+        },
+        "coverity_sast": {
+          "score": 70,
+          "reason": "Moderate in-house firmware/app code on top of significant third-party integration.",
+          "artifact": "Gateway/IPC firmware + management app source",
+          "mandate_clause": "IEC 62443-4-1 secure development; SSDF static analysis"
+        },
+        "dast": {
+          "score": 60,
+          "reason": "Device/management web portals and cloud (WISE-PaaS) present a moderate owned web surface.",
+          "artifact": "Device portals / WISE-PaaS cloud",
+          "mandate_clause": "OWASP API testing; CRA connected-service security"
+        },
+        "defensics_fuzzing": {
+          "score": 82,
+          "reason": "Implements industrial protocols (Modbus, OPC-UA, MQTT, BACnet); IEC 62443 explicitly expects protocol robustness/fuzz testing.",
+          "artifact": "Modbus / OPC-UA / MQTT / BACnet stacks",
+          "mandate_clause": "IEC 62443-4-2 robustness/fuzz testing"
+        }
+      },
+      "recommended_lead": "Black Duck (SCA + SBOM)",
+      "wedge": "SBOM for IEC 62443/CRA market access, with Defensics attach on the OT protocol stacks."
+    },
+    {
+      "company": "Robotics / autonomy stack vendor (SLAM)",
+      "archetype": "Autonomous robotics / SLAM software + AI codegen",
+      "phase": "Phase 2",
+      "fit_scores": {
+        "black_duck_sca_sbom": {
+          "score": 85,
+          "reason": "ROS/OSS-heavy autonomy stack; SBOM increasingly demanded by industrial/OEM integrators and CRA.",
+          "artifact": "ROS-based autonomy stack / SDK",
+          "mandate_clause": "CRA Annex I SBOM; integrator supply-chain transparency"
+        },
+        "coverity_sast": {
+          "score": 88,
+          "reason": "Large in-house C++ perception/planning codebase plus AI/ML code and heavy AI-codegen use — weight LLM/AI-assisted SAST UP for exactly this profile.",
+          "artifact": "Proprietary C++ SLAM/planning + ML code (AI-assisted authoring)",
+          "mandate_clause": "SSDF PW.7/PW.8 static analysis; secure-development expectations for safety-relevant autonomy"
+        },
+        "dast": {
+          "score": 35,
+          "reason": "Mostly embedded/on-robot software; limited owned web/API surface.",
+          "artifact": "Fleet-management portal (limited)",
+          "mandate_clause": "Low web applicability"
+        },
+        "defensics_fuzzing": {
+          "score": 68,
+          "reason": "Sensor/comms and ROS message interfaces are fuzzable, but protocol authorship is narrower than a comms-stack vendor.",
+          "artifact": "Sensor/ROS message + comms interfaces",
+          "mandate_clause": "IEC 62443 / safety-interface robustness"
+        }
+      },
+      "recommended_lead": "Coverity (SAST) + LLM/AI-assisted SAST",
+      "wedge": "LLM-assisted SAST on the AI-generated C++ autonomy code, Black Duck attach for the ROS/OSS dependency tree."
+    }
+  ]
+}
